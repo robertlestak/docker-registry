@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  proxy:
+    build:
+      context: nginx-proxy
+      args:
+        PROXY_SSL: $PROXY_SSL
+        PROXY_DOMAIN: $PROXY_DOMAIN
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - ./proxy_data:/data
+    restart: always
+    deploy:
+      restart_policy:
+        condition: always
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+
+volumes:
+  proxy_data:

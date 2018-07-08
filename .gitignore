@@ -1,0 +1,4 @@
+*.swp
+data
+proxy_data
+.env
