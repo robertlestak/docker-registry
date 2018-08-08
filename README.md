@@ -4,20 +4,30 @@ A basic self-hosted Docker Registry server with NGINX reverse proxy and authenti
 
 ## Configuration
 
-Use `certbot` to install a Let's Encrypt SSL cert on the machine if you are using SSL.
-
-`mkdir proxy_data`, create a `.htpasswd` file for your authorized users and place it in this directory.
-
 ````
 cp .env-sample .env
-# Configure accordingly
-
-# Deploy with proxy
-docker-compose -f docker-compose.yml -f docker-compose-proxy.yml up -d
 ````
 
-## Potential Improvements
+To utilize SSL, set `CERT_PATH` and `CERT_KEY` to the path to your SSL cert and keys which are accessible from within the container - therefore it is recommended to place these somewhere in `proxy_data`.
 
-- I have been meaning to look into the possibility of using a Traefik container for the reverse proxy as it is much more flexible than and automated the current NGINX configuration.
+### Authentication
 
-- Currently any user authed with the `.htpasswd` file has access to all the repositories in the registry. A potential future modification would be a system to limit user access to specific repositories.
+`make init` will create `access/htpasswds` and `access/services` directories.
+
+In `access/htpasswds/users`, enter the `htpasswd` user:pass for each restricted-access user.
+
+`make services` will create a file in `access/services` for each user listed in `access/htpasswds/users`.
+
+In `access/services/[user]`, list all of the repositories to which you would like to enable the user to access.
+
+Any user listed in `access/htpasswds/admin` will be granted full access to the registry API.
+
+Once you have set up the desired user access levels, run `make config`.
+
+You can modify the users / services at any time - run `make reload` for your changes to take effect if the proxy is already running.
+
+## Deployment
+
+````
+make deploy
+````
