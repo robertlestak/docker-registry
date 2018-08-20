@@ -24,9 +24,9 @@ function create_nginx_conf () {
       cp conf/nginx.base.conf proxy_data/conf/nginx.conf
   fi
   sed \
-    -e "s/PROXY_DOMAIN/$PROXY_DOMAIN/g" \
-    -e "s/CERT_PATH/$CERT_PATH/g" \
-    -e "s/CERT_KEY/$CERT_KEY/g" \
+    -e "s,PROXY_DOMAIN,$PROXY_DOMAIN,g" \
+    -e "s,CERT_PATH,$CERT_PATH,g" \
+    -e "s,CERT_KEY,$CERT_KEY,g" \
     proxy_data/conf/nginx.conf > tmp && mv tmp proxy_data/conf/nginx.conf
 }
 
