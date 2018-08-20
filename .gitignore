@@ -1,4 +1,5 @@
 *.swp
-data
 proxy_data
+registry_data
 .env
+access

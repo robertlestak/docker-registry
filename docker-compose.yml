@@ -3,7 +3,7 @@ version: '3'
 services:
   registry:
       image: registry:2
-      env_file: .env
+      container_name: registry
       restart: always
       volumes:
         - ./registry_data:/var/lib/registry
