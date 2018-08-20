@@ -3,7 +3,7 @@
 source ../.env
 
 function create_all () {
-  cat access/htpasswds/* > proxy_data/htpasswds/.htpasswd-all
+  awk 1 access/htpasswds/* > proxy_data/htpasswds/.htpasswd-all
 }
 
 function create_admin () {
