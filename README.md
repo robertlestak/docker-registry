@@ -26,6 +26,14 @@ Once you have set up the desired user access levels, run `make config`.
 
 You can modify the users / services at any time - run `make reload` for your changes to take effect if the proxy is already running.
 
+#### Change Password
+
+A user can change their password at any time by sending a `POST` request to `http[s]://[registry]/v2/_password` with their current username/pass as Basic Auth and the new password as the `password` form value. For example:
+
+````
+curl -u user:current_password http://docker-registry.umusic.net/v2/_password -d 'password=new_password'
+````
+
 ## Deployment
 
 ````
