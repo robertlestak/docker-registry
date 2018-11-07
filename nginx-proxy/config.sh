@@ -11,7 +11,7 @@ function create_admin () {
 }
 
 function create_base () {
-  mkdir -p proxy_data/htpasswds proxy_data/repository-access proxy_data/services proxy_data/conf
+  mkdir -p proxy_data/htpasswds proxy_data/repository-access proxy_data/conf
   create_admin
   create_all
 }
@@ -65,30 +65,10 @@ function create_services () {
     for s in "${THE_USERS_SERVICES[@]}"; do
       set_service_user $s $up
     done
-    create_user_repo_json "$THE_USER"
   done
   create_access_blocks
   add_admin_to_services
   cp conf/*.conf proxy_data/conf/
-}
-
-function create_user_repo_json () {
-  rm -f proxy_data/services/$1.json
-  echo '{"repositories":[' >> proxy_data/services/$1.json
-  i=0
-  for s in "${THE_USERS_SERVICES[@]}"; do
-    REPO_STR=\"$s\"
-    i=$(( i+1 ))
-    if [ $i -lt "${#THE_USERS_SERVICES[@]}" ]; then
-      REPO_STR+=","
-    fi
-    echo $REPO_STR >> proxy_data/services/$1.json
-  done
-  # CAT_MESSAGE="This is an abridged catalog displaying only the repositories to which you have been granted access."
-  # echo "], \"message\": \"$CAT_MESSAGE\"}" >> proxy_data/services/$1.json
-  echo "]}" >> proxy_data/services/$1.json
-  tr -d '\n' < proxy_data/services/$1.json > tmp && mv tmp proxy_data/services/$1.json
-
 }
 
 function touch_user_services () {

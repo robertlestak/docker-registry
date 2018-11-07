@@ -1,4 +1,4 @@
-module github.com/umg/docker-registry-password-changer
+module github.com/umg/docker-registry-manager
 
 require (
 	github.com/foomo/htpasswd v0.0.0-20180422071726-cb63c4ac0e50

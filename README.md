@@ -18,7 +18,7 @@ In `access/htpasswds/users`, enter the `htpasswd` user:pass for each restricted-
 
 `make services` will create a file in `access/services` for each user listed in `access/htpasswds/users`.
 
-In `access/services/[user]`, list all of the repositories to which you would like to enable the user to access.
+In `access/services/[user]`, list all of the namespaces (ex: `namespace/[repos]`) to which you would like to enable the user to access.
 
 Any user listed in `access/htpasswds/admin` will be granted full access to the registry API.
 
@@ -28,10 +28,10 @@ You can modify the users / services at any time - run `make reload` for your cha
 
 #### Change Password
 
-A user can change their password at any time by sending a `POST` request to `http[s]://[registry]/v2/_password` with their current username/pass as Basic Auth and the new password as the `password` form value. For example:
+A user can change their password at any time by sending a `POST` request to `https://[registry]/v2/_password` with their current username/pass as Basic Auth and the new password as the `password` form value. For example:
 
 ````
-curl -u user:current_password http://docker-registry.umusic.net/v2/_password -d 'password=new_password'
+curl -u user:current_password https://docker-registry.umusic.net/v2/_password -d 'password=new_password'
 ````
 
 ## Deployment

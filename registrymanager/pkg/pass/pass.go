@@ -1,4 +1,4 @@
-package main
+package pass
 
 import (
 	"fmt"
@@ -7,9 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/gorilla/mux"
-	_ "github.com/joho/godotenv/autoload"
 )
 
 func setPass(u string, p string, f string) error {
@@ -50,19 +47,19 @@ func fileContainsUser(f string, u string) (bool, error) {
 func usernameExists(u string) (string, error) {
 	var exf string
 	var e error
-	ac, aerr := fileContainsUser(os.Getenv("PC_ADMIN_PASS_FILE"), u)
+	ac, aerr := fileContainsUser(os.Getenv("RM_ADMIN_PASS_FILE"), u)
 	if aerr != nil {
 		return exf, aerr
 	}
 	if ac {
-		exf = os.Getenv("PC_ADMIN_PASS_FILE")
+		exf = os.Getenv("RM_ADMIN_PASS_FILE")
 	} else {
-		uc, uerr := fileContainsUser(os.Getenv("PC_USER_PASS_FILE"), u)
+		uc, uerr := fileContainsUser(os.Getenv("RM_USER_PASS_FILE"), u)
 		if uerr != nil {
 			return exf, uerr
 		}
 		if uc {
-			exf = os.Getenv("PC_USER_PASS_FILE")
+			exf = os.Getenv("RM_USER_PASS_FILE")
 		}
 	}
 	return exf, e
@@ -71,7 +68,7 @@ func usernameExists(u string) (string, error) {
 func rebuildConf() error {
 	var e error
 	cmd := exec.Command("make", "reload")
-	cmd.Dir = os.Getenv("PC_PATH_TO_MAKEFILE")
+	cmd.Dir = os.Getenv("RM_PATH_TO_MAKEFILE")
 	_, oerr := cmd.Output()
 	if oerr != nil {
 		return oerr
@@ -79,35 +76,25 @@ func rebuildConf() error {
 	return e
 }
 
-func main() {
-	r := mux.NewRouter()
-
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Must authenticate with BASIC AUTH and send password POST parameter")
+func PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
+	u := r.Header.Get("X-Auth-User")
+	p := r.FormValue("password")
+	if u == "" || p == "" {
+		fmt.Fprint(w, "username and password required")
 		return
-	}).Methods("GET")
-
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		u := r.Header.Get("X-Auth-User")
-		p := r.FormValue("password")
-		if u == "" || p == "" {
-			fmt.Fprint(w, "username and password required")
-			return
-		}
-		uexf, uerr := usernameExists(u)
-		if uerr != nil {
-			fmt.Fprint(w, uerr.Error())
-			return
-		} else if uexf == "" {
-			fmt.Fprint(w, "Username does not exist")
-			return
-		}
-		if err := setPass(u, p, uexf); err != nil {
-			fmt.Fprint(w, err.Error())
-			return
-		}
-		go rebuildConf()
-		fmt.Fprint(w, "Password changed")
-	}).Methods("POST")
-	http.ListenAndServe(":8081", r)
+	}
+	uexf, uerr := usernameExists(u)
+	if uerr != nil {
+		fmt.Fprint(w, uerr.Error())
+		return
+	} else if uexf == "" {
+		fmt.Fprint(w, "Username does not exist")
+		return
+	}
+	if err := setPass(u, p, uexf); err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	go rebuildConf()
+	fmt.Fprint(w, "Password changed")
 }

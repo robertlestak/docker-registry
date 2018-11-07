@@ -15,8 +15,8 @@ WORKDIR /src
 
 COPY . .
 
-RUN go build -o passwordchanger .
+RUN go build -o registrymanager .
 
 EXPOSE 8081
 
-CMD ["./passwordchanger"]
+CMD ["./registrymanager"]

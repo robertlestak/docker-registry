@@ -18,9 +18,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
-  passwordchanger:
-    build: nginx-proxy/passwordchanger
-    container_name: passwordchanger
+  registrymanager:
+    build: registrymanager
+    container_name: registrymanager
     env_file: .env
     restart: always
     volumes:
