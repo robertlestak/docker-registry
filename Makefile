@@ -24,6 +24,6 @@ proxy-dirs:
 	touch nginx-proxy/access/htpasswds/users
 
 reload: config
-	docker restart registry_proxy
+	docker exec -i registry_proxy service nginx reload
 
 .PHONY: proxy proxy-dirs reload clean init deploy
