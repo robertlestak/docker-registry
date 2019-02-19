@@ -7,9 +7,14 @@ RUN apt-get update -y && apt-get install -y apache2-utils \
     software-properties-common \
     apt-transport-https dirmngr
 
-RUN echo 'deb https://apt.dockerproject.org/repo debian-stretch main' >> /etc/apt/sources.list && \
-    apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys F76221572C52609D && \
-    apt-get update -y && apt-get install -y docker-engine
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
+    add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   xenial \
+   stable" && \
+   apt-get update && \
+   apt-get install -y docker-ce docker-ce-cli containerd.io
+
 
 WORKDIR /src
 
