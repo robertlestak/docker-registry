@@ -34,6 +34,18 @@ A user can change their password at any time by sending a `POST` request to `htt
 curl -u user:current_password https://docker-registry.umusic.net/v2/_password -d 'password=new_password'
 ````
 
+#### Server-Side User Removal
+
+If a user needs to be removed from the registry. you must make the following changes:
+
+- Delete `docker-registry/nginx-proxy/access/services/[username]` file.
+- Remove the user's `htpasswd` entry in `docker-registry/nginx-proxy/access/htpasswds/users`
+- Run `make config` in application root to rebuild NGINX configuration with user removed.
+
+##### Server-Side Password Reset
+
+If a user has lost their password and it needs to be set back to the default (which is stored in a Chef data bag), do the above process to completely remove the user from the system (no need to run `make config`, Chef does that already), then run `chef-client`, which will recreate the user with the password that is stored in the data bag.
+
 ## Deployment
 
 ````
