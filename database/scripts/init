@@ -1,0 +1,28 @@
+#!/bin/bash
+
+ENV_VARS=(".env" ".registry.env")
+for e in ${ENV_VARS[@]}; do
+  if [[ -f $e ]]; then
+    export $(<$e)
+  fi
+done
+
+dockerimport() {
+  DBCONT=$(docker ps | grep registry_database | awk '{print $1}')
+  for f in $(ls database/sql/*); do
+    cat $f | docker exec -i $DBCONT psql -U $POSTGRES_USER $POSTGRES_DB
+  done
+}
+
+remoteimport() {
+  export PGPASSWORD=$POSTGRES_PASSWORD
+  for f in $(ls database/sql/*); do
+    cat $f | psql -h $POSTGRES_HOST -U $POSTGRES_USER $POSTGRES_DB
+  done
+}
+
+if [[ "$REGISTRY_HOST" == "database" ]]; then
+  dockerimport
+else
+  remoteimport
+fi

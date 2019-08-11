@@ -7,23 +7,23 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+
+	"github.com/umg/docker-registry-manager/pkg/users"
 )
 
+// Catalog contains the repositories list
 type Catalog struct {
 	Repositories []string `json:"repositories"`
 }
 
+// fullCatalog returns the full catalog from the registry server
 func fullCatalog() (*Catalog, error) {
 	cat := &Catalog{}
 	var e error
 	c := &http.Client{}
 	var rh string
-	if os.Getenv("REGISTRY_HOST") != "" {
-		rh = os.Getenv("REGISTRY_HOST")
-	} else {
-		rh = os.Getenv("PROXY_DOMAIN")
-	}
-	r, re := http.NewRequest("GET", rh+"/v2/_catalog", nil)
+	rh = os.Getenv("REGISTRY_SCHEMA") + "://" + os.Getenv("REGISTRY_HOST") + ":" + os.Getenv("REGISTRY_PORT")
+	r, re := http.NewRequest("GET", rh+"/"+os.Getenv("REGISTRY_VERSION")+"/_catalog", nil)
 	if re != nil {
 		return cat, re
 	}
@@ -44,40 +44,39 @@ func fullCatalog() (*Catalog, error) {
 	return cat, e
 }
 
-func outputCatalog(w http.ResponseWriter, c *Catalog) {
-	fmt.Fprint(w, c)
-}
-
-func CatalogHandler(w http.ResponseWriter, r *http.Request) {
-	cat, err := fullCatalog()
-	if err != nil {
-		fmt.Fprintf(w, err.Error())
+// Handler returns list of repositories user can access
+func Handler(w http.ResponseWriter, r *http.Request) {
+	_, _, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", `Basic realm="Docker Registry"`)
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return
 	}
-	u := r.Header.Get("X-Auth-User")
-	if isAdmin(u) {
+	cat, err := fullCatalog()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	u, uerr := users.GetCurrent(r)
+	if uerr != nil {
+		http.Error(w, uerr.Error(), http.StatusUnauthorized)
+		return
+	}
+	w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
+	if u.Admin {
 		jd, jerr := json.Marshal(&cat)
 		if jerr != nil {
-			fmt.Fprintf(w, jerr.Error())
+			http.Error(w, jerr.Error(), http.StatusBadRequest)
 			return
 		}
 		fmt.Fprintf(w, string(jd))
 		return
 	}
-	uns, nse := userNamespaces(u)
-	if nse != nil {
-		fmt.Println(nse)
-		return
-	}
-	fc, fce := fullCatalog()
-	if fce != nil {
-		fmt.Fprintf(w, fce.Error())
-		return
-	}
 	var urs []string
-	repos := fc.Repositories
+	repos := cat.Repositories
 	for _, repo := range repos {
-		for _, ns := range uns {
+		for _, ns := range u.Namespaces {
 			rm := regexp.MustCompile("^" + ns + "/")
 			if repo != "" && ns != "" && rm.MatchString(repo) {
 				urs = append(urs, repo)
@@ -89,7 +88,7 @@ func CatalogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	jd, jerr := json.Marshal(&uc)
 	if jerr != nil {
-		fmt.Fprintf(w, jerr.Error())
+		http.Error(w, jerr.Error(), http.StatusBadRequest)
 		return
 	}
 	fmt.Fprintf(w, string(jd))

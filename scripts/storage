@@ -1,0 +1,33 @@
+#!/bin/bash
+
+ENV_VARS=(".env" ".registry.env")
+for e in ${ENV_VARS[@]}; do
+  if [[ -f $e ]]; then
+    export $(<$e)
+  fi
+done
+
+OUTFILE=config.yml
+SECRET_FILE=${1:-"secrets.json"}
+cp config.templ.yml $OUTFILE
+
+DRIVER="$(jq -r '.storage.driver' $SECRET_FILE)"
+
+yq 'del(.storage.filesystem)' $OUTFILE > $OUTFILE.tmp && mv $OUTFILE.tmp $OUTFILE
+yq 'del(.storage.s3)' $OUTFILE > $OUTFILE.tmp && mv $OUTFILE.tmp $OUTFILE
+
+if [[ "$DRIVER" == "s3" ]]; then
+  yq ".storage.s3.accesskey = \"$(jq -r '.storage.s3.accesskey' $SECRET_FILE)\"" $OUTFILE > $OUTFILE.tmp && mv $OUTFILE.tmp $OUTFILE
+  yq ".storage.s3.secretkey = \"$(jq -r '.storage.s3.secretkey' $SECRET_FILE)\"" $OUTFILE > $OUTFILE.tmp && mv $OUTFILE.tmp $OUTFILE
+  yq ".storage.s3.region = \"$(jq -r '.storage.s3.region' $SECRET_FILE)\"" $OUTFILE > $OUTFILE.tmp && mv $OUTFILE.tmp $OUTFILE
+  yq ".storage.s3.bucket = \"$(jq -r '.storage.s3.bucket' $SECRET_FILE)\"" $OUTFILE > $OUTFILE.tmp && mv $OUTFILE.tmp $OUTFILE
+else
+  yq ".storage.filesystem.rootdirectory = \"$(jq -r '.storage.filesystem.rootdirectory' $SECRET_FILE)\"" $OUTFILE > $OUTFILE.tmp && mv $OUTFILE.tmp $OUTFILE
+fi
+
+HTTP_SECRET="$(jq -r '.ENV.REGISTRY_HTTP_SECRET' $SECRET_FILE)"
+if [[ ! -z $HTTP_SECRET ]]; then
+  yq ".http.secret = \"$HTTP_SECRET\"" $OUTFILE > $OUTFILE.tmp && mv $OUTFILE.tmp $OUTFILE
+fi
+
+yq --yaml-output '.' $OUTFILE > $OUTFILE.tmp && mv $OUTFILE.tmp $OUTFILE

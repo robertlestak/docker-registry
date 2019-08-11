@@ -2,22 +2,63 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/umg/docker-registry-manager/pkg/catalog"
-	"github.com/umg/docker-registry-manager/pkg/pass"
+	"github.com/umg/docker-registry-manager/pkg/db"
+	"github.com/umg/docker-registry-manager/pkg/proxy"
+	"github.com/umg/docker-registry-manager/pkg/users"
 )
 
-func defaultHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Must authenticate with BASIC AUTH")
+func init() {
+	_, err := db.Connect()
+	if err != nil {
+		log.Fatalf("Database Error: %s\n", err.Error())
+	}
+}
+
+func redirect(w http.ResponseWriter, req *http.Request) {
+	target := "https://" + req.Host + req.URL.Path
+	if len(req.URL.RawQuery) > 0 {
+		target += "?" + req.URL.RawQuery
+	}
+	http.Redirect(w, req, target,
+		http.StatusTemporaryRedirect)
 }
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc("/", defaultHandler).Methods("GET")
-	r.HandleFunc("/password", pass.PasswordChangeHandler).Methods("POST")
-	r.HandleFunc("/catalog", catalog.CatalogHandler).Methods("GET")
-	http.ListenAndServe(":8081", r)
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		index := fmt.Sprintf("Contact %s for access.", os.Getenv("ADMIN_EMAIL"))
+		fmt.Fprint(w, index)
+		return
+	})
+	r.HandleFunc("/user", users.GetHandler).Methods("GET")
+	r.HandleFunc("/user", users.UpdateHandler).Methods("POST")
+	r.HandleFunc("/users", users.ListHandler).Methods("GET")
+	r.HandleFunc("/users/create", users.CreateHandler).Methods("POST")
+	r.HandleFunc("/users/delete", users.DeleteHandler).Methods("DELETE")
+	r.HandleFunc("/users/password", users.PasswordChangeHandler).Methods("POST")
+	r.HandleFunc("/users/user-password", users.AdminUserPasswordChangeHandler).Methods("POST")
+	r.HandleFunc("/users/namespaces", users.ChangeNamespacesHandler).Methods("POST")
+	r.HandleFunc("/v2/_catalog", catalog.Handler).Methods("GET")
+	r.PathPrefix("/").HandlerFunc(proxy.Registry)
+	if os.Getenv("CERT_PATH") != "" && os.Getenv("CERT_KEY_PATH") != "" {
+		fmt.Println("Listening on port :443")
+		go http.ListenAndServe(":80", http.HandlerFunc(redirect))
+		err := http.ListenAndServeTLS(":443", os.Getenv("CERT_PATH"), os.Getenv("CERT_KEY_PATH"), r)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		fmt.Println("Listening on port :80")
+		err := http.ListenAndServe(":80", r)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }

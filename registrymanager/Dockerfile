@@ -22,6 +22,7 @@ COPY . .
 
 RUN go build -o registrymanager .
 
-EXPOSE 8081
+EXPOSE 80
+EXPOSE 443
 
 CMD ["./registrymanager"]

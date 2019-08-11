@@ -1,5 +1,8 @@
 *.swp
 proxy_data
 registry_data
-.env
-access
+*.env
+secrets.json
+certs
+config.yml
+registrymanager/registrymanager

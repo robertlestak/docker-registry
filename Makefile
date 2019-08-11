@@ -1,29 +1,23 @@
-init: proxy-dirs
+secrets.json:
+	./scripts/secrets load
 
-config: clean proxy-dirs
-	cd nginx-proxy && ./config.sh
+vaultsecrets:
+	./scripts/secrets create
 
-clean:
-	rm -rf nginx-proxy/proxy_data/repository-access \
-		nginx-proxy/proxy_data/htpasswds nginx-proxy/proxy_data/conf \
-		nginx-proxy/proxy_data/services
+config.yml: secrets.json
+	./scripts/storage
+	rm -f secrets.json
 
+database:
+	./database/scripts/init
 
-deploy: proxy-dirs proxy
+registrymanager:
+	cd registrymanager && docker build . -t registrymanager:latest
+
+deploy: registrymanager config.yml
 	docker-compose up -d
+	#docker stack deploy -c docker-compose.yml registry
+	sleep 10
+	$(MAKE) database
 
-services: clean proxy-dirs
-	cd nginx-proxy && ./config.sh touch-services
-
-proxy-dirs:
-	mkdir -p nginx-proxy/proxy_data nginx-proxy/access \
-		nginx-proxy/access/htpasswds nginx-proxy/access/services \
-		nginx-proxy/proxy_data/repository-access nginx-proxy/proxy_data/htpasswds \
-		nginx-proxy/proxy_data/conf
-	touch nginx-proxy/access/htpasswds/admin
-	touch nginx-proxy/access/htpasswds/users
-
-reload: config
-	docker exec -i registry_proxy service nginx reload
-
-.PHONY: proxy proxy-dirs reload clean init deploy
+.PHONY: deploy database config.yml secrets.json registrymanager
