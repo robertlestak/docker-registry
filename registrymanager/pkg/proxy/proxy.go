@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -9,11 +10,14 @@ import (
 	"github.com/umg/docker-registry-manager/pkg/users"
 )
 
+// BasicAuthRealm is the string name of the realm
+const BasicAuthRealm string = "Docker Registry"
+
 // Registry autheniticates the user and then forwards requests to the registry
 func Registry(w http.ResponseWriter, r *http.Request) {
 	_, _, ok := r.BasicAuth()
 	if !ok {
-		w.Header().Set("WWW-Authenticate", `Basic realm="Docker Registry"`)
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return

@@ -10,6 +10,9 @@ import (
 	"strings"
 )
 
+// BasicAuthRealm is the string name of the realm
+const BasicAuthRealm string = "Docker Registry"
+
 // GetCurrent returns the user for the current request
 func GetCurrent(r *http.Request) (*User, error) {
 	un, pass, _ := r.BasicAuth()
@@ -46,6 +49,13 @@ func reqIsAdmin(r *http.Request) bool {
 
 // CreateHandler creates a user
 func CreateHandler(w http.ResponseWriter, r *http.Request) {
+	_, _, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
+		return
+	}
 	if !reqIsAdmin(r) {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
@@ -90,9 +100,11 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 // PasswordChangeHandler changes a password for a user
 func PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
-	un, p, _ := r.BasicAuth()
-	if un == "" || p == "" {
-		fmt.Fprint(w, "username and password required")
+	un, p, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return
 	}
 	u := &User{
@@ -121,7 +133,7 @@ func PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if u.AD {
-		http.Error(w, http.StatusText(http.StatusNetworkAuthenticationRequired), http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusNetworkAuthenticationRequired), http.StatusNetworkAuthenticationRequired)
 		return
 	}
 	u, err := u.ChangePass()
@@ -134,9 +146,11 @@ func PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
 
 // UpdateHandler enables an admin to change a user's password
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	un, p, _ := r.BasicAuth()
-	if un == "" || p == "" {
-		fmt.Fprint(w, "username and password required")
+	_, _, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return
 	}
 	if !reqIsAdmin(r) {
@@ -178,9 +192,11 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 // DeleteHandler enables an admin to delete a user
 func DeleteHandler(w http.ResponseWriter, r *http.Request) {
-	un, p, _ := r.BasicAuth()
-	if un == "" || p == "" {
-		fmt.Fprint(w, "username and password required")
+	_, _, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return
 	}
 	if !reqIsAdmin(r) {
@@ -200,9 +216,11 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 // ChangeNamespacesHandler enables an admin to change a user's namespace
 func ChangeNamespacesHandler(w http.ResponseWriter, r *http.Request) {
-	un, p, _ := r.BasicAuth()
-	if un == "" || p == "" {
-		fmt.Fprint(w, "username and password required")
+	_, _, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return
 	}
 	if !reqIsAdmin(r) {
@@ -223,9 +241,11 @@ func ChangeNamespacesHandler(w http.ResponseWriter, r *http.Request) {
 
 // GetHandler returns the data for a user
 func GetHandler(w http.ResponseWriter, r *http.Request) {
-	un, p, _ := r.BasicAuth()
-	if un == "" || p == "" {
-		fmt.Fprint(w, "username and password required")
+	un, _, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return
 	}
 	u := &User{
@@ -249,9 +269,11 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 
 // ListHandler enables an admin to list all users
 func ListHandler(w http.ResponseWriter, r *http.Request) {
-	un, p, _ := r.BasicAuth()
-	if un == "" || p == "" {
-		fmt.Fprint(w, "username and password required")
+	_, _, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return
 	}
 	if !reqIsAdmin(r) {
