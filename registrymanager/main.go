@@ -38,12 +38,12 @@ func main() {
 		return
 	})
 	r.HandleFunc("/user", users.GetHandler).Methods("GET")
-	r.HandleFunc("/user", users.UpdateHandler).Methods("POST")
+	r.HandleFunc("/user", users.CreateHandler).Methods("POST")
+	r.HandleFunc("/user", users.UpdateHandler).Methods("PATCH")
+	r.HandleFunc("/user", users.DeleteHandler).Methods("DELETE")
 	r.HandleFunc("/users", users.ListHandler).Methods("GET")
-	r.HandleFunc("/users/create", users.CreateHandler).Methods("POST")
-	r.HandleFunc("/users/delete", users.DeleteHandler).Methods("DELETE")
-	r.HandleFunc("/users/password", users.PasswordChangeHandler).Methods("POST")
-	r.HandleFunc("/users/namespaces", users.ChangeNamespacesHandler).Methods("POST")
+	r.HandleFunc("/user/password", users.PasswordChangeHandler).Methods("POST")
+	r.HandleFunc("/user/namespaces", users.ChangeNamespacesHandler).Methods("POST")
 	r.HandleFunc("/v2/_catalog", catalog.Handler).Methods("GET")
 	r.PathPrefix("/").HandlerFunc(proxy.Registry)
 	if os.Getenv("CERT_PATH") != "" && os.Getenv("CERT_KEY_PATH") != "" {
