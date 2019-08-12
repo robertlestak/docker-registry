@@ -82,7 +82,8 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	u, err = u.Create()
 	if err != nil {
-		fmt.Fprint(w, err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	fmt.Fprint(w, "User created")
 }
@@ -99,6 +100,21 @@ func PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
 		Password:    p,
 		NewPassword: r.FormValue("password"),
 	}
+	auth, aerr := u.Authenticated()
+	if aerr != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+	if !auth {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+	if reqIsAdmin(r) && r.FormValue("username") != "" {
+		u.Username = r.FormValue("username")
+	} else if !reqIsAdmin(r) && r.FormValue("username") != "" {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
 	uerr := u.Get()
 	if uerr != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -111,29 +127,6 @@ func PasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
 	u, err := u.ChangePass()
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-	fmt.Fprintf(w, "Password Changed\n")
-}
-
-// AdminUserPasswordChangeHandler enables an admin to change a user's password
-func AdminUserPasswordChangeHandler(w http.ResponseWriter, r *http.Request) {
-	un, p, _ := r.BasicAuth()
-	if un == "" || p == "" {
-		fmt.Fprint(w, "username and password required")
-		return
-	}
-	if !reqIsAdmin(r) {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-	u := &User{
-		Username:    r.FormValue("username"),
-		NewPassword: r.FormValue("password"),
-	}
-	u, err := u.AdminChangeUserPass()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 	fmt.Fprintf(w, "Password Changed\n")

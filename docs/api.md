@@ -31,10 +31,8 @@ DELETE /users/delete
     Delete a user from the system and disable access. Will not affect any images pushed by user.
     Params: username (string)
 POST /users/password
-    Update the password for the current user. Can only be executed if the user is not an AD user.
-    Params: password (string)
-POST /users/user-password
-    Enables an admin
+    Update the password for the current user. Can only be executed if the user is not an AD user. If the executing user is an admin and provides the "username" param, the password will be changed for that user.
+    Params: password (string), username (string, opt)
 POST /users/namespaces
     Update the namespaces for a user.
     Params: username (string), namespaces (csv)

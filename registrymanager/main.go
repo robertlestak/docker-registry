@@ -43,7 +43,6 @@ func main() {
 	r.HandleFunc("/users/create", users.CreateHandler).Methods("POST")
 	r.HandleFunc("/users/delete", users.DeleteHandler).Methods("DELETE")
 	r.HandleFunc("/users/password", users.PasswordChangeHandler).Methods("POST")
-	r.HandleFunc("/users/user-password", users.AdminUserPasswordChangeHandler).Methods("POST")
 	r.HandleFunc("/users/namespaces", users.ChangeNamespacesHandler).Methods("POST")
 	r.HandleFunc("/v2/_catalog", catalog.Handler).Methods("GET")
 	r.PathPrefix("/").HandlerFunc(proxy.Registry)

@@ -6,3 +6,4 @@ secrets.json
 certs
 config.yml
 registrymanager/registrymanager
+.DS_Store

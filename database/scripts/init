@@ -21,7 +21,7 @@ remoteimport() {
   done
 }
 
-if [[ "$REGISTRY_HOST" == "database" ]]; then
+if [[ "$POSTGRES_HOST" == "database" ]]; then
   dockerimport
 else
   remoteimport

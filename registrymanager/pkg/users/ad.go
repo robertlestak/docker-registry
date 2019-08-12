@@ -60,7 +60,7 @@ func Search(l *ldap.Conn, u *User) (string, error) {
 		return dn, err
 	}
 	if len(sr.Entries) != 1 {
-		return dn, errors.New("User does not exist or too many entries returned")
+		return dn, errors.New("user does not exist in LDAP")
 	}
 	u.LDAPDN = sr.Entries[0].DN
 	return u.LDAPDN, nil
@@ -85,4 +85,24 @@ func (u *User) ADAuth() (bool, error) {
 		return false, aerr
 	}
 	return auth, nil
+}
+
+// ADUserExists returns true if a user exists in LDAP
+func (u *User) ADUserExists() (bool, error) {
+	if os.Getenv("LDAP_SERVER") == "" {
+		return false, errors.New("LDAP server required")
+	}
+	l, err := Connect()
+	if err != nil {
+		return false, err
+	}
+	defer l.Close()
+	dn, lerr := Search(l, u)
+	if lerr != nil {
+		return false, lerr
+	}
+	if dn != "" {
+		return true, nil
+	}
+	return false, nil
 }

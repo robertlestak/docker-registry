@@ -2,6 +2,7 @@ package users
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -52,6 +53,7 @@ func (u *User) Authenticated() (bool, error) {
 		}
 		return ad, nil
 	}
+	fmt.Printf("%+v\n", u)
 	qry := `SELECT id FROM users
             WHERE username=$1 AND
             password=crypt($2, password)
@@ -151,6 +153,15 @@ func (u *User) Create() (*User, error) {
 	if u.Username == "" {
 		return u, errors.New(http.StatusText(http.StatusBadRequest))
 	}
+	if u.AD {
+		ex, aderr := u.ADUserExists()
+		if aderr != nil {
+			return u, aderr
+		}
+		if !ex {
+			return u, errors.New(http.StatusText(http.StatusNetworkAuthenticationRequired))
+		}
+	}
 	u.Namespaces = trimStringSlice(u.Namespaces)
 	qry := `INSERT INTO users
             (username, password, ad, admin, namespaces) VALUES
@@ -182,27 +193,6 @@ func (u *User) Delete() error {
 // ChangePass checks the password of the existing user
 // and changes the password to NewPassword if the current password is correct
 func (u *User) ChangePass() (*User, error) {
-	var e error
-	auth, aerr := u.Authenticated()
-	if aerr != nil {
-		return u, aerr
-	} else if !auth {
-		return u, errors.New("Unauthorized")
-	}
-	qry := `UPDATE users SET
-						password=crypt($2, gen_salt('bf'))
-						WHERE username=$1
-					RETURNING id, created_at
-				 `
-	err := db.DB.QueryRow(qry, u.Username, u.NewPassword).Scan(&u.ID, &u.CreatedAt)
-	if err != nil {
-		return u, errors.New(http.StatusText(http.StatusBadRequest))
-	}
-	return u, e
-}
-
-// AdminChangeUserPass allows the admin user to change a user's password
-func (u *User) AdminChangeUserPass() (*User, error) {
 	var e error
 	qry := `UPDATE users SET
 						password=crypt($2, gen_salt('bf'))
