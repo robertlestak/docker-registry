@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,7 @@ func catalogURL(req *Request) (string, error) {
 	if req.Num > 0 {
 		params.Add("n", strconv.Itoa(req.Num))
 	}
+	//params.Set("n", strconv.Itoa(100))
 	requrl.RawQuery = params.Encode()
 	return requrl.String(), nil
 }
@@ -89,14 +91,36 @@ func trimUserRepos(cat *Catalog, u *users.User) []string {
 	return urs
 }
 
-func shouldCheckNextPage(uc *Catalog, req *Request, u *users.User) bool {
+func nsNotFulfilled(cat *Catalog, u *users.User) bool {
+	if len(cat.Repositories) == 0 {
+		return false
+	}
+	if len(u.Namespaces) == 0 {
+		return false
+	}
+	lastRepo := u.Namespaces[len(u.Namespaces)-1]
+	lastNS := u.Namespaces[len(u.Namespaces)-1]
+	if strings.Compare(lastNS[:1], lastRepo[:1]) >= 0 {
+		return true
+	}
+	return false
+}
+
+func shouldCheckNextPage(cat *Catalog, uc *Catalog, req *Request, u *users.User) bool {
 	if req.Last == "" {
+		// no more pages in the registry
 		return false
 	} else if len(uc.Repositories) == 0 {
+		// no repositories in registry
 		return true
-	} else if len(uc.Repositories) >= 100 {
+	} else if len(uc.Repositories) >= req.Num {
+		// list has fulfilled limit
 		return false
-	} else if len(uc.Repositories) < req.Num && userAccessRepo(u, uc.Repositories[len(uc.Repositories)-1]) {
+	} else if nsNotFulfilled(cat, u) {
+		// namespace listing not fulfilled lexicographically
+		return true
+	} else if userAccessRepo(u, uc.Repositories[len(uc.Repositories)-1]) {
+		// user has access to last repo in list, potentially has access to next
 		return true
 	}
 	return false
@@ -104,27 +128,32 @@ func shouldCheckNextPage(uc *Catalog, req *Request, u *users.User) bool {
 
 // buildUserCatalog iterates through the repos and ensures only the user's namespaces are displayed
 func buildUserCatalog(w http.ResponseWriter, h http.Header, cat *Catalog, req *Request, u *users.User) *Catalog {
+	if req.Num == 0 {
+		req.Num = 100
+	}
+	sort.Strings(cat.Repositories)
+	sort.Strings(u.Namespaces)
 	urs := trimUserRepos(cat, u)
 	uc := &Catalog{
 		Repositories: urs,
 	}
-	var lastElem string
-	for shouldCheckNextPage(uc, req, u) {
+	for shouldCheckNextPage(cat, uc, req, u) {
+		// query registry api until all user repos are found
 		cat, lreq, _, err := catalogReq(req)
 		if err != nil {
 			return uc
 		}
 		req = lreq
+		// trim local repos to only match those available to user
 		lurs := trimUserRepos(cat, u)
 		uc.Repositories = append(uc.Repositories, lurs...)
-		if !userAccessRepo(u, lurs[len(lurs)-1]) {
+		if len(uc.Repositories) >= req.Num {
 			break
-		} else {
-			lastElem = lurs[len(lurs)-1]
 		}
 	}
-	if len(uc.Repositories) >= 100 {
-		h.Set("link", "</v2/_catalog?last="+lastElem+"&n=100>; rel=\"next\"")
+	if len(uc.Repositories) >= req.Num {
+		uc.Repositories = uc.Repositories[:req.Num]
+		h.Set("link", "</v2/_catalog?last="+uc.Repositories[len(uc.Repositories)-1]+"&n="+strconv.Itoa(req.Num)+">; rel=\"next\"")
 	} else {
 		h.Del("link")
 	}
@@ -138,13 +167,14 @@ func userCatalogHandler(w http.ResponseWriter, r *http.Request) (*Catalog, *user
 	if rerr != nil {
 		return nil, nil, req, nil, rerr
 	}
+	u, uerr := users.GetCurrent(r)
+	if uerr != nil {
+		return nil, u, req, nil, uerr
+	}
+	req.User = u
 	cat, rreq, h, err := catalogReq(req)
 	if err != nil {
 		return cat, nil, rreq, h, err
-	}
-	u, uerr := users.GetCurrent(r)
-	if uerr != nil {
-		return cat, u, rreq, h, uerr
 	}
 	return cat, u, rreq, h, nil
 }

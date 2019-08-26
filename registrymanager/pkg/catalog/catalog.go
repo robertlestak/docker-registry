@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
+
+	"github.com/umg/docker-registry-manager/pkg/users"
 )
 
 // BasicAuthRealm is the string name of the realm
@@ -20,16 +24,29 @@ type Catalog struct {
 type Request struct {
 	Num  int
 	Last string
+	User *users.User
 }
 
 func catalogReq(req *Request) (*Catalog, *Request, http.Header, error) {
 	c := &http.Client{}
 	cat := &Catalog{}
+	var rurl string
 	requrl, rerr := catalogURL(req)
 	if rerr != nil {
 		return cat, req, nil, rerr
 	}
-	r, re := http.NewRequest("GET", requrl, nil)
+	if req.User.Admin {
+		rurl = requrl
+	} else {
+		ru, _ := url.Parse(requrl)
+		params := url.Values{}
+		params.Set("n", strconv.Itoa(100))
+		params.Set("last", req.Last)
+		ru.RawQuery = params.Encode()
+		rurl = ru.String()
+	}
+
+	r, re := http.NewRequest("GET", rurl, nil)
 	if re != nil {
 		return cat, req, nil, re
 	}
@@ -43,6 +60,7 @@ func catalogReq(req *Request) (*Catalog, *Request, http.Header, error) {
 	if berr != nil {
 		return cat, req, res.Header, berr
 	}
+	pn := req.Num
 	if res.Header.Get("link") != "" {
 		rq, rerr := parseNextLink(res.Header.Get("link"))
 		if rerr != nil {
@@ -52,6 +70,7 @@ func catalogReq(req *Request) (*Catalog, *Request, http.Header, error) {
 	} else {
 		req.Last = ""
 	}
+	req.Num = pn
 	jerr := json.Unmarshal(bd, &cat)
 	if jerr != nil {
 		return cat, req, res.Header, jerr
@@ -83,6 +102,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, string(jd))
 		return
 	}
+	req.User = u
 	uc := buildUserCatalog(w, h, cat, req, u)
 	jd, jerr := json.Marshal(&uc)
 	if jerr != nil {
