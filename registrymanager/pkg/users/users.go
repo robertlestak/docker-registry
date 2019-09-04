@@ -57,7 +57,6 @@ func (u *User) Authenticated() (bool, error) {
 	qry := `SELECT id FROM users
             WHERE username=$1 AND
             password=crypt($2, password)
-						AND deleted_at IS NULL
           `
 	err := db.DB.QueryRow(qry, u.Username, u.Password).Scan(&u.ID)
 	if err != nil {
@@ -75,7 +74,6 @@ func (u *User) isAD() (bool, error) {
 	}
 	qry := `SELECT ad FROM users
 						WHERE username=$1
-						AND deleted_at IS NULL
           `
 	err := db.DB.QueryRow(qry, u.Username).Scan(&u.AD)
 	if err != nil {
@@ -92,7 +90,6 @@ func (u *User) Get() error {
 	}
 	qry := `SELECT ad, admin, namespaces, created_at FROM users
             WHERE username=$1
-						AND deleted_at IS NULL
           `
 	err := db.DB.QueryRow(qry, u.Username).Scan(&u.AD, &u.Admin, pq.Array(&u.Namespaces), &u.CreatedAt)
 	if err != nil {
@@ -105,7 +102,6 @@ func (u *User) Get() error {
 func List(o int, l int) ([]User, error) {
 	var e error
 	qry := `SELECT username, ad, admin, namespaces, created_at FROM users
-						WHERE deleted_at IS NULL
 						OFFSET $1 LIMIT $2
           `
 	var ul []User
@@ -138,7 +134,6 @@ func (u *User) GetNamespaces() error {
 	}
 	qry := `SELECT namespaces FROM users
             WHERE username=$1
-						AND deleted_at IS NULL
           `
 	err := db.DB.QueryRow(qry, u.Username).Scan(pq.Array(&u.Namespaces))
 	if err != nil {
@@ -178,9 +173,8 @@ func (u *User) Create() (*User, error) {
 // Delete removes the user specified by username
 func (u *User) Delete() error {
 	var e error
-	qry := `UPDATE users SET deleted_at=current_timestamp
+	qry := `DELETE FROM users
 						WHERE username=$1
-						AND deleted_at IS NULL
 					RETURNING id
 				 `
 	err := db.DB.QueryRow(qry, u.Username).Scan(&u.ID)

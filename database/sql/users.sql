@@ -5,7 +5,6 @@ CREATE table users (
   ad boolean not null,
   namespaces text[],
   admin boolean default false,
-  created_at date default current_date,
-  deleted_at date default null
+  created_at date default current_date
 );
 CREATE EXTENSION pgcrypto;
