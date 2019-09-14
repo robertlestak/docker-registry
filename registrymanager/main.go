@@ -19,6 +19,9 @@ import (
 	"github.com/umg/docker-registry-manager/pkg/users"
 )
 
+// BasicAuthRealm is the string name of the realm
+const BasicAuthRealm string = "Docker Registry"
+
 func init() {
 	_, err := db.Connect()
 	if err != nil {
