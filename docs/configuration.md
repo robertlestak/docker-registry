@@ -42,4 +42,6 @@ To utilize LDAP authentication, set the `LDAP_` variables for your environment.
 
 ## SSL / TLS
 
+The contents of the `CERTS_DIR` will be traversed and all `.pem` and `.key` files in sub-directories will be loaded as separate cert pairs. This allows the registry to listen with TLS with multiple certs if required, such as when accessing from both within and outside an internal network.
+
 To utilize SSL / TLS, provide the path to the cert and key files. By default the `./scripts/secrets load` script will pull these from the Vault secret and place these in `$PWD/certs` and mount these into the `registrymanager` in the `/certs` directory.

@@ -1,10 +1,15 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/joho/godotenv/autoload"
@@ -30,6 +35,22 @@ func redirect(w http.ResponseWriter, req *http.Request) {
 		http.StatusTemporaryRedirect)
 }
 
+func getCertsInDir(d string) map[string]string {
+	crts, err := ioutil.ReadDir(d)
+	if err != nil {
+		log.Fatal(err)
+	}
+	crtPair := make(map[string]string)
+	for _, c := range crts {
+		if strings.HasSuffix(c.Name(), ".key") {
+			crtPair["key"] = path.Join(d, c.Name())
+		} else if strings.HasSuffix(c.Name(), ".pem") {
+			crtPair["pem"] = path.Join(d, c.Name())
+		}
+	}
+	return crtPair
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -46,13 +67,46 @@ func main() {
 	r.HandleFunc("/user/namespaces", users.ChangeNamespacesHandler).Methods("POST")
 	r.HandleFunc("/v2/_catalog", catalog.Handler).Methods("GET")
 	r.PathPrefix("/").HandlerFunc(proxy.Registry)
-	if os.Getenv("CERT_PATH") != "" && os.Getenv("CERT_KEY_PATH") != "" {
+
+	if os.Getenv("CERTS_DIR") != "" {
+		var crtPairs []map[string]string
+		crtDir, cerr := ioutil.ReadDir(os.Getenv("CERTS_DIR"))
+		if cerr != nil {
+			log.Fatal(cerr)
+		}
+		for _, f := range crtDir {
+			if f.IsDir() {
+				crtPair := getCertsInDir(path.Join(os.Getenv("CERTS_DIR"), f.Name()))
+				crtPairs = append(crtPairs, crtPair)
+			} else {
+				crtPair := getCertsInDir(os.Getenv("CERTS_DIR"))
+				crtPairs = append(crtPairs, crtPair)
+			}
+		}
+		var err error
+		tlsConfig := &tls.Config{}
+		tlsConfig.Certificates = make([]tls.Certificate, len(crtPairs))
+		for i, c := range crtPairs {
+			tlsConfig.Certificates[i], err = tls.LoadX509KeyPair(c["pem"], c["key"])
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		tlsConfig.BuildNameToCertificate()
 		fmt.Println("Listening on port :443")
 		go http.ListenAndServe(":80", http.HandlerFunc(redirect))
-		err := http.ListenAndServeTLS(":443", os.Getenv("CERT_PATH"), os.Getenv("CERT_KEY_PATH"), r)
+		server := &http.Server{
+			ReadTimeout:    10 * time.Second,
+			WriteTimeout:   10 * time.Second,
+			Handler:        r,
+			MaxHeaderBytes: 1 << 20,
+			TLSConfig:      tlsConfig,
+		}
+		listener, err := tls.Listen("tcp", ":443", tlsConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Fatal(server.Serve(listener))
 	} else {
 		fmt.Println("Listening on port :80")
 		err := http.ListenAndServe(":80", r)
