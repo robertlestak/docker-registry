@@ -2,7 +2,6 @@ package users
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -53,7 +52,6 @@ func (u *User) Authenticated() (bool, error) {
 		}
 		return ad, nil
 	}
-	fmt.Printf("%+v\n", u)
 	qry := `SELECT id FROM users
             WHERE username=$1 AND
             password=crypt($2, password)

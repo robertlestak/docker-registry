@@ -234,6 +234,13 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if reqIsAdmin(r) && r.FormValue("username") != "" {
 		u.Username = strings.ToLower(r.FormValue("username"))
+	} else {
+		cu, err := GetCurrent(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		u.Username = cu.Username
 	}
 	err := u.Get()
 	if err != nil {
