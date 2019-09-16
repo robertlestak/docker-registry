@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/joho/godotenv/autoload"
@@ -99,11 +98,8 @@ func main() {
 		fmt.Println("Listening on port :443")
 		go http.ListenAndServe(":80", http.HandlerFunc(redirect))
 		server := &http.Server{
-			ReadTimeout:    10 * time.Second,
-			WriteTimeout:   10 * time.Second,
-			Handler:        r,
-			MaxHeaderBytes: 1 << 20,
-			TLSConfig:      tlsConfig,
+			Handler:   r,
+			TLSConfig: tlsConfig,
 		}
 		listener, err := tls.Listen("tcp", ":443", tlsConfig)
 		if err != nil {
