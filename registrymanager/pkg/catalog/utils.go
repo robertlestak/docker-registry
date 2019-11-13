@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -84,6 +85,7 @@ func trimUserRepos(cat *Catalog, u *users.User) []string {
 	var urs []string
 	repos := cat.Repositories
 	for _, repo := range repos {
+		log.Println(u, repo)
 		if userAccessRepo(u, repo) {
 			urs = append(urs, repo)
 		}
