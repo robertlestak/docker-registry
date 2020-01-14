@@ -13,14 +13,13 @@ import (
 // BasicAuthRealm is the string name of the realm
 const BasicAuthRealm string = "Docker Registry"
 
-// Registry autheniticates the user and then forwards requests to the registry
-func Registry(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := r.BasicAuth()
-	if !ok {
-		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
-		return
+func registryProxy(w http.ResponseWriter, r *http.Request) {
+	e := func(w http.ResponseWriter, r *http.Request, e error) {
+		http.Error(w, e.Error(), http.StatusBadGateway)
+	}
+	mr := func(r *http.Response) error {
+		r.Header.Set("Docker-Distribution-Api-Version", "registry/2.0")
+		return nil
 	}
 	d := func(req *http.Request) {
 		req.URL.Scheme = os.Getenv("REGISTRY_SCHEMA")
@@ -29,6 +28,28 @@ func Registry(w http.ResponseWriter, r *http.Request) {
 		req.URL.Path = r.URL.Path
 		req.SetBasicAuth(os.Getenv("REGISTRY_ADMIN_USER"), os.Getenv("REGISTRY_ADMIN_PASS"))
 	}
+	p := &httputil.ReverseProxy{
+		Director:       d,
+		ErrorHandler:   e,
+		ModifyResponse: mr,
+	}
+	p.ServeHTTP(w, r)
+}
+
+// Registry autheniticates the user and then forwards requests to the registry
+func Registry(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/v2" || r.URL.Path == "/v2/" {
+		registryProxy(w, r)
+		return
+	}
+	_, _, ok := r.BasicAuth()
+	if !ok {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
+		return
+	}
+
 	u, uerr := users.GetCurrent(r)
 	if uerr != nil {
 		http.Error(w, uerr.Error(), http.StatusUnauthorized)
@@ -47,17 +68,5 @@ func Registry(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	e := func(w http.ResponseWriter, r *http.Request, e error) {
-		http.Error(w, e.Error(), http.StatusBadGateway)
-	}
-	mr := func(r *http.Response) error {
-		r.Header.Set("Docker-Distribution-Api-Version", "registry/2.0")
-		return nil
-	}
-	p := &httputil.ReverseProxy{
-		Director:       d,
-		ErrorHandler:   e,
-		ModifyResponse: mr,
-	}
-	p.ServeHTTP(w, r)
+	registryProxy(w, r)
 }
