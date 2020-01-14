@@ -38,14 +38,10 @@ func registryProxy(w http.ResponseWriter, r *http.Request) {
 
 // Registry autheniticates the user and then forwards requests to the registry
 func Registry(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/v2" || r.URL.Path == "/v2/" {
-		registryProxy(w, r)
-		return
-	}
 	_, _, ok := r.BasicAuth()
 	if !ok {
 		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return
 	}
