@@ -40,8 +40,9 @@ func registryProxy(w http.ResponseWriter, r *http.Request) {
 func Registry(w http.ResponseWriter, r *http.Request) {
 	_, _, ok := r.BasicAuth()
 	if !ok {
+		w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
 		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, BasicAuthRealm))
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(http.StatusText(http.StatusUnauthorized) + "\n"))
 		return
 	}
